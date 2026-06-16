@@ -1,19 +1,27 @@
 # GitHub Submission Checklist
 
-## 应提交文件
+## Goal
+
+This checklist helps keep the repository safe and readable before GitHub submission.
+
+The project contains local model files and generated outputs.
+
+Those files should not be committed.
+
+## Files To Submit
 
 - `README.md`
 - `.gitignore`
 - `PROJECT_OVERVIEW.md`
 - `results_summary.md`
 - `GITHUB_SUBMISSION_CHECKLIST.md`
+- `notes/interview_notes.md`
 - `scripts/`
-- `data/*.jsonl` 中的小规模构造数据和评估 prompts
+- `data/*.jsonl` for small constructed datasets
 - `experiments/*.md`
-- `notes/*.md`
 - `assets/model_score_comparison.png`
 
-## 不应提交文件或目录
+## Files Not To Submit
 
 - `outputs/`
 - `models/`
@@ -23,64 +31,107 @@
 - `__pycache__/`
 - `.venv/`
 - `.env`
+
+## Weight Files Not To Submit
+
 - `*.pt`
 - `*.pth`
 - `*.bin`
 - `*.safetensors`
 
-## 大文件/权重检查
+## Why These Files Are Ignored
 
-提交前运行：
+`outputs/` contains generated inference results and LoRA adapters.
+
+`models/` contains local Qwen model weights.
+
+`minimind/` contains the cloned upstream MiniMind repository and checkpoints.
+
+`data/raw_real_v5/` is reserved for local raw real-world data.
+
+These files are either too large, generated locally, or unsuitable for GitHub submission.
+
+## Check Git Status
+
+Run:
 
 ```powershell
 git status --short --ignored
 ```
 
-确认以下内容只出现在 ignored 区域，不出现在 staged/untracked 待提交区域：
+Safe ignored entries include:
 
-- Qwen 本地模型：`models/`
-- MiniMind 上游仓库和 checkpoint：`minimind/`
-- 推理输出和 adapter：`outputs/`
-- 原始真实数据：`data/raw_real_v5/`
-- 任意 `.pth`、`.pt`、`.bin`、`.safetensors`
+- `!! outputs/`
+- `!! models/`
+- `!! minimind/`
+- `!! data/raw_real_v5/`
+- `!! scripts/__pycache__/`
 
-## 如何运行图表脚本
+Dangerous entries include:
+
+- any `.pth` file not ignored
+- any `.safetensors` file not ignored
+- any model file under normal untracked status
+- any raw real data file under normal untracked status
+
+## Check Markdown Files
+
+Run:
+
+```powershell
+python -c "from pathlib import Path; files=['README.md','PROJECT_OVERVIEW.md','results_summary.md','notes/interview_notes.md','GITHUB_SUBMISSION_CHECKLIST.md']; [print(f, len(Path(f).read_text(encoding='utf-8').splitlines())) for f in files]"
+```
+
+Each Markdown file should have real line breaks.
+
+README should not appear as one long raw line on GitHub.
+
+## Generate Chart
+
+Run:
 
 ```powershell
 python scripts/plot_project_results.py
 ```
 
-如果当前 Python 没有 `matplotlib`，脚本会使用标准库 fallback 生成简单 PNG，不需要安装新依赖。
-
-输出：
+Expected output:
 
 ```text
 assets/model_score_comparison.png
 ```
 
-## 如何查看项目结果
+If matplotlib is unavailable, the script uses a standard-library fallback.
 
-推荐阅读顺序：
+## Recommended Reading Order
 
 1. `README.md`
 2. `PROJECT_OVERVIEW.md`
 3. `results_summary.md`
-4. `experiments/final_evaluation_v3_summary.md`
+4. `notes/interview_notes.md`
 5. `experiments/final_qwen_v4_summary.md`
-6. `notes/interview_notes.md`
 
-## 提交前检查项
+## Before Commit
 
-- README 顶部结果表是否和实验报告一致。
-- `assets/model_score_comparison.png` 是否存在。
-- `PROJECT_OVERVIEW.md` 和 `results_summary.md` 是否更新。
-- `notes/interview_notes.md` 是否包含 Qwen v4 和 v5 局限。
-- 没有运行新训练。
-- 没有下载新模型或真实大数据。
-- 没有把 `outputs/`、`models/`、`minimind/` 加入 Git。
+Confirm no training was run.
 
-## 推荐 commit message
+Confirm no model was downloaded.
+
+Confirm no raw real data was added.
+
+Confirm no output adapter was staged.
+
+Confirm no upstream MiniMind files were staged.
+
+Confirm the score table still contains:
+
+- MiniMind baseline: 5.025
+- MiniMind LoRA v1: 5.375
+- MiniMind LoRA v2: 5.645
+- Qwen baseline: 6.275
+- Qwen LoRA v4: 7.865
+
+## Recommended Commit Message
 
 ```text
-docs: improve project overview and interview notes
+docs: rebuild markdown docs with real line breaks
 ```
