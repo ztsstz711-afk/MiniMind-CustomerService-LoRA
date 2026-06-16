@@ -1,5 +1,35 @@
 # MiniMind-CustomerService-LoRA：电商售后合规回复 LoRA 微调实验
 
+## TL;DR / Project Summary
+
+这是一个面向“电商售后合规回复”的低资源 SFT / LoRA 实验项目。项目主线是：
+
+`low-resource customer-service compliance SFT -> MiniMind LoRA -> small-model limitation -> Qwen2.5-1.5B migration -> Qwen LoRA improvement -> rule-based evaluation`
+
+简单说，我先构造电商售后合规数据，用 MiniMind 跑通 LoRA 微调全流程，并发现小模型在拒答边界和复杂客服表达上的能力限制；随后迁移到 Qwen2.5-1.5B-Instruct，用同一套评估体系验证更强基座模型和 Qwen LoRA 的效果提升。
+
+![Model score comparison](assets/model_score_comparison.png)
+
+| Model | Overall Score |
+| --- | ---: |
+| MiniMind baseline | 5.025 |
+| MiniMind LoRA v1 | 5.375 |
+| MiniMind LoRA v2 | 5.645 |
+| Qwen baseline | 6.275 |
+| Qwen LoRA v4 | 7.865 |
+
+快速入口：
+
+- 项目总览：[`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md)
+- 结果汇总：[`results_summary.md`](results_summary.md)
+- 面试讲解笔记：[`notes/interview_notes.md`](notes/interview_notes.md)
+
+重要说明：
+
+- 当前分数来自 rule-based evaluation，只能作为粗粒度自动评估，不能等同于人工业务评估。
+- v5 真实数据增强仍处于规划/探测阶段，没有下载真实大数据，也没有训练 v5 模型。
+- `outputs/`、`models/`、`minimind/` 包含本地结果、模型权重或上游仓库内容，不提交到 GitHub。
+
 ## 项目简介
 
 这是一个面向“电商售后合规回复”的低资源小模型 SFT / LoRA 微调实验。项目基于 MiniMind，完整跑通了数据构造、MiniMind 对话格式转换、baseline 推理、LoRA 微调、LoRA 推理和 before/after 对比分析。

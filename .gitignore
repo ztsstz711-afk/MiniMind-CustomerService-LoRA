@@ -5,6 +5,7 @@ __pycache__/
 outputs/
 checkpoints/
 models/
+data/raw_real_v5/
 minimind/
 minimind/out/
 minimind/**/*.pth
