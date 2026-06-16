@@ -128,6 +128,40 @@ v2 LoRA 已基于扩展数据完成训练，独立输出目录不会覆盖 v1 ad
 
 初步结论：v2 训练 loss 更低，礼貌开头和投诉安抚有轻微改善，但拒绝不合理请求仍不稳定，部分回答仍存在泛化、偏题和重复。v2 不能只凭 loss 判断业务效果，后续需要更大的评估集和更强基座模型验证。
 
+### v3 系统化评估计划
+
+v3 开始从 10 条人工观察样本升级为系统化评估体系：
+
+- 评估集：`data/eval_prompts_v3.jsonl`
+- 评估规模：100 条 prompts
+- 类别覆盖：10 类，每类 10 条
+- 字段：`id`、`category`、`prompt`、`expected_behavior`、`required_elements`、`forbidden_elements`、`difficulty`、`tags`
+- hard cases：49 条
+- 评分脚本：`scripts/evaluate_outputs_v3.py`
+- 计划文档：`experiments/evaluation_v3_plan.md`
+
+v3 的 rule-based rubric 会从礼貌安抚、必要信息询问、规则说明、下一步操作、拒答表现、不安全承诺、重复和长度等维度打分。后续会对 baseline / LoRA v1 / LoRA v2 分别生成 100 条输出，并做 category-level 与 difficulty-level 对比。
+
+当前进展：
+
+- 统一评估推理脚本：`scripts/run_eval_inference_v3.py`
+- 推理输出检查脚本：`scripts/check_eval_inference_v3_outputs.py`
+- baseline 100 条推理：已完成
+- baseline 输出：`outputs/eval_outputs_baseline_v3.jsonl`
+- baseline Markdown：`experiments/eval_outputs_baseline_v3.md`
+- baseline 检查：100 条输出、空输出 0、极短输出 0、重复倾向 2、疑似乱码 2
+- LoRA v1 100 条推理：已完成，输出 `outputs/eval_outputs_lora_v1_v3.jsonl` / `experiments/eval_outputs_lora_v1_v3.md`
+- LoRA v1 检查：100 条输出、空输出 0、极短输出 0、重复倾向 8、疑似乱码 1
+- LoRA v2 100 条推理：已完成，输出 `outputs/eval_outputs_lora_v2_v3.jsonl` / `experiments/eval_outputs_lora_v2_v3.md`
+- LoRA v2 检查：100 条输出、空输出 0、极短输出 0、重复倾向 6、疑似乱码 1
+- 三模型 rule-based rubric 统一评分：已完成
+- overall average score：baseline 5.025 / LoRA v1 5.375 / LoRA v2 5.645
+- 拒绝不合理请求类平均分：baseline 6.350 / LoRA v1 6.850 / LoRA v2 7.450
+- 评分报告：`experiments/eval_report_baseline_v3.md`、`experiments/eval_report_lora_v1_v3.md`、`experiments/eval_report_lora_v2_v3.md`
+- 三模型评分对比：`experiments/eval_score_comparison_v3.md`
+- v3 最终总结：`experiments/final_evaluation_v3_summary.md`
+- 结论提醒：v2 在 rule-based 分数上最高，但拒答词命中并不稳定，自动评分不能替代人工评估。
+
 ## 模型与训练配置
 
 - base checkpoint：`full_sft_768.pth`
@@ -152,6 +186,7 @@ v2 LoRA 已基于扩展数据完成训练，独立输出目录不会覆盖 v1 ad
 - baseline prompts：10 条
 - before/after 对比：已完成
 - baseline / LoRA v1 / LoRA v2 三方对比：已完成
+- v3 100 条评估集与 rule-based rubric：已创建
 
 关键实验文件：
 
@@ -166,6 +201,15 @@ v2 LoRA 已基于扩展数据完成训练，独立输出目录不会覆盖 v1 ad
 - LoRA v2 输出：`experiments/lora_v2_outputs.md`
 - 三方推理对比：`experiments/baseline_lora_v1_v2_comparison.md`
 - v2 最终分析：`experiments/final_lora_v2_analysis.md`
+- v3 评估计划：`experiments/evaluation_v3_plan.md`
+- v3 评估集：`data/eval_prompts_v3.jsonl`
+- v3 baseline 100 条输出：`experiments/eval_outputs_baseline_v3.md`
+- v3 推理日志：`experiments/eval_inference_v3_log.md`
+- v3 baseline 评分报告：`experiments/eval_report_baseline_v3.md`
+- v3 LoRA v1 评分报告：`experiments/eval_report_lora_v1_v3.md`
+- v3 LoRA v2 评分报告：`experiments/eval_report_lora_v2_v3.md`
+- v3 三模型评分对比：`experiments/eval_score_comparison_v3.md`
+- v3 最终评估总结：`experiments/final_evaluation_v3_summary.md`
 
 ## 结果分析
 
@@ -203,8 +247,9 @@ v1 的结论比较朴素，但很重要：
 
 - 基于 v2 1000 条高质量售后样本重新训练 LoRA。
 - 使用同一批 prompts 对比 baseline / LoRA v1 / LoRA v2 在拒答边界与 hard cases 上的表现。
-- 加入人工评分或 LLM-as-Judge。
-- 构建更系统的评估集。
+- 基于 v3 100 条 evaluation prompts 生成 baseline / LoRA v1 / LoRA v2 输出。
+- 使用 rule-based rubric 输出 category-level 和 difficulty-level 对比。
+- 加入人工评分或 LLM-as-Judge 做交叉验证。
 - 迁移到 Qwen-0.5B / Qwen-1.5B LoRA。
 - 对比 MiniMind vs Qwen LoRA 效果。
 
@@ -290,6 +335,26 @@ python scripts/run_lora_inference.py
 python scripts/compare_baseline_lora.py
 ```
 
+### 9. v3 系统化评估准备
+
+```powershell
+python scripts/build_eval_prompts_v3.py
+python scripts/check_eval_prompts_v3.py
+```
+
+### 10. v3 统一评估推理
+
+```powershell
+python scripts/run_eval_inference_v3.py --model_name baseline
+python scripts/check_eval_inference_v3_outputs.py --model_name baseline
+```
+
+后续有 100 条模型输出后，可使用：
+
+```powershell
+python scripts/evaluate_outputs_v3.py --model-name lora_v2 --outputs outputs/eval_lora_v2_v3.jsonl
+```
+
 ## 当前进度
 
 - [x] 数据生成与划分
@@ -313,3 +378,11 @@ python scripts/compare_baseline_lora.py
 - [x] v2 LoRA 推理完成
 - [x] baseline / LoRA v1 / LoRA v2 三方对比完成
 - [x] final LoRA v2 analysis 完成
+- [x] v3 100 条 evaluation prompts 已创建
+- [x] v3 rule-based rubric 评分脚本已创建
+- [x] v3 evaluation plan 已创建
+- [x] v3 baseline 100 条推理完成
+- [x] v3 LoRA v1 100 条推理
+- [x] v3 LoRA v2 100 条推理
+- [x] v3 baseline / LoRA v1 / LoRA v2 统一评分
+- [x] v3 final evaluation summary 完成
