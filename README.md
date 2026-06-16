@@ -82,6 +82,52 @@
 }
 ```
 
+### v2 数据集扩展
+
+v1 使用 300 条数据完成了 MiniMind LoRA 的完整闭环。v2 在保留 v1 数据和实验结果的基础上，新增了更高质量的扩展数据集：
+
+- v2 总数据：1000
+- train_v2：800
+- eval_v2：200
+- 类别：10 类
+- 新增字段：`difficulty`、`tags`
+- 重点增强：拒答边界、投诉安抚、退款/退货/发票/优惠券边界样本
+
+v2 中 `拒绝不合理请求` 扩展到 160 条，覆盖过期优惠券恢复、发票多开、不退货直接退款、已使用商品按全新退、索要他人订单信息、索要商家私人联系方式、超出售后期强制退货、威胁差评要求赔偿、伪造状态、要求绕过平台规则等 hard cases。
+
+`投诉安抚` 扩展到 120 条，覆盖多次催促、威胁投诉、质疑欺骗、不信任客服、要求明确处理时限等高情绪场景。后续会基于 v2 重新训练 LoRA，并对比 v1 / v2 的回复质量和拒答稳定性。
+
+### v2 LoRA 训练结果
+
+v2 LoRA 已基于扩展数据完成训练，独立输出目录不会覆盖 v1 adapter 和日志：
+
+- v2 数据：1000 条
+- train_v2 / eval_v2：800 / 200
+- hard samples：557
+- 训练数据：`data/minimind_train_v2.jsonl`
+- base checkpoint：`minimind/out/full_sft_768.pth`
+- 输出目录：`outputs/lora_customer_service_v2/`
+- LoRA 名称：`lora_customer_service_v2`
+- 训练配置：`experiments/lora_train_v2_config.json`
+- 训练记录：`experiments/lora_training_v2_log.md`
+- v2 loss：3.9860 -> 2.2107
+- v2 adapter size：798177 bytes，约 0.76 MB
+- v1/v2 训练对比：`experiments/v1_v2_training_comparison.md`
+
+下一步是使用同一批 prompts 做 baseline / LoRA v1 / LoRA v2 三方推理对比。v2 的目标不是单纯追求 loss 更低，而是观察拒答边界、投诉安抚、必要信息询问和售后流程稳定性是否比 v1 更好。
+
+### v2 三方推理对比
+
+已使用同一批 10 条 `baseline_prompts` 完成 baseline / LoRA v1 / LoRA v2 三方同题推理对比：
+
+- LoRA v2 输出：`experiments/lora_v2_outputs.md`
+- LoRA v2 JSONL：`outputs/lora_v2_outputs.jsonl`
+- 三方对比报告：`experiments/baseline_lora_v1_v2_comparison.md`
+- 三方对比 JSONL：`outputs/baseline_lora_v1_v2_comparison.jsonl`
+- v2 最终分析：`experiments/final_lora_v2_analysis.md`
+
+初步结论：v2 训练 loss 更低，礼貌开头和投诉安抚有轻微改善，但拒绝不合理请求仍不稳定，部分回答仍存在泛化、偏题和重复。v2 不能只凭 loss 判断业务效果，后续需要更大的评估集和更强基座模型验证。
+
 ## 模型与训练配置
 
 - base checkpoint：`full_sft_768.pth`
@@ -99,10 +145,13 @@
 
 ## 实验结果
 
-- LoRA loss：3.7383 -> 2.8888
-- LoRA adapter size：约 0.76 MB
+- LoRA v1 loss：3.7383 -> 2.8888
+- LoRA v1 adapter size：约 0.76 MB
+- LoRA v2 loss：3.9860 -> 2.2107
+- LoRA v2 adapter size：约 0.76 MB
 - baseline prompts：10 条
 - before/after 对比：已完成
+- baseline / LoRA v1 / LoRA v2 三方对比：已完成
 
 关键实验文件：
 
@@ -112,6 +161,11 @@
 - LoRA 输出：`experiments/lora_outputs.md`
 - before/after 对比：`experiments/before_after_comparison.md`
 - 最终分析：`experiments/final_lora_analysis.md`
+- LoRA v2 训练日志：`experiments/lora_training_v2_log.md`
+- v1/v2 训练对比：`experiments/v1_v2_training_comparison.md`
+- LoRA v2 输出：`experiments/lora_v2_outputs.md`
+- 三方推理对比：`experiments/baseline_lora_v1_v2_comparison.md`
+- v2 最终分析：`experiments/final_lora_v2_analysis.md`
 
 ## 结果分析
 
@@ -147,8 +201,8 @@ v1 的结论比较朴素，但很重要：
 
 ## 后续计划
 
-- 扩展到 1000+ 高质量售后样本。
-- 增加拒答边界与 hard cases。
+- 基于 v2 1000 条高质量售后样本重新训练 LoRA。
+- 使用同一批 prompts 对比 baseline / LoRA v1 / LoRA v2 在拒答边界与 hard cases 上的表现。
 - 加入人工评分或 LLM-as-Judge。
 - 构建更系统的评估集。
 - 迁移到 Qwen-0.5B / Qwen-1.5B LoRA。
@@ -173,6 +227,15 @@ python scripts/split_dataset.py
 
 ```powershell
 python scripts/convert_to_minimind_format.py
+```
+
+### 2.1 构造 v2 扩展数据
+
+```powershell
+python scripts/build_dataset_v2.py
+python scripts/check_dataset_v2.py
+python scripts/split_dataset_v2.py
+python scripts/convert_to_minimind_format_v2.py
 ```
 
 ### 3. 数据 smoke test
@@ -204,6 +267,16 @@ python scripts/run_lora_training.py
 python scripts/check_lora_training_outputs.py
 ```
 
+### 6.1 LoRA v2 训练准备
+
+```powershell
+python scripts/check_lora_training_v2_requirements.py
+python scripts/run_lora_training_v2.py
+python scripts/check_lora_training_v2_outputs.py
+```
+
+注意：`run_lora_training_v2.py` 会真正启动训练，只在确认资源、日志路径和输出目录无误后运行。
+
 ### 7. LoRA 推理
 
 ```powershell
@@ -231,3 +304,12 @@ python scripts/compare_baseline_lora.py
 - [x] before/after 对比
 - [x] final analysis 完成
 - [x] v1 completed
+- [x] v2 数据集扩展完成
+- [x] v2 hard cases 与拒答边界增强完成
+- [x] v2 MiniMind 格式转换完成
+- [x] v2 LoRA 训练 wrapper 已创建
+- [x] v2 LoRA 训练完成
+- [x] v1/v2 训练结果对比完成
+- [x] v2 LoRA 推理完成
+- [x] baseline / LoRA v1 / LoRA v2 三方对比完成
+- [x] final LoRA v2 analysis 完成
