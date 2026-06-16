@@ -4,6 +4,7 @@ __pycache__/
 .env
 outputs/
 checkpoints/
+models/
 minimind/
 minimind/out/
 minimind/**/*.pth
