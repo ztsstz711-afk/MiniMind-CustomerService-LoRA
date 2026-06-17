@@ -4,9 +4,21 @@
 
 ## TL;DR
 
-这是一个围绕“电商售后合规回复”的低资源 SFT / LoRA 项目。
+This repository records a sequence of small-scale LoRA experiments for Chinese e-commerce
+after-sales customer-service responses.
 
-项目主线：
+The experiments started with MiniMind to validate the data format, LoRA training loop,
+inference scripts, and evaluation pipeline.
+
+Later runs moved to Qwen2.5-1.5B-Instruct after MiniMind results showed clear capacity
+limits on policy explanation and refusal behavior.
+
+The project uses synthetic compliance-focused data and a small rule-based evaluation set.
+
+The reported scores are useful for relative comparison inside this repository, but they are
+not a substitute for human business evaluation.
+
+实验主线：
 
 ```text
 low-resource customer-service compliance SFT
@@ -17,17 +29,9 @@ low-resource customer-service compliance SFT
 -> rule-based evaluation
 ```
 
-我先构造电商售后客服数据，用 MiniMind 跑通低资源 LoRA 微调流程。
+> 当前分数来自 rule-based evaluation，不能等同于人工业务评估。
 
-随后通过系统化评估发现 MiniMind 小模型在拒答边界、复杂规则解释和自然表达上存在明显限制。
-
-因此项目迁移到 Qwen2.5-1.5B-Instruct，并在同一套评估体系下验证 Qwen baseline 和 Qwen LoRA 的效果。
-
-最终结果显示，Qwen baseline 已超过 MiniMind LoRA v2，Qwen LoRA v4 进一步提升。
-
-> 注意：本项目不是工业级客服系统。当前分数来自 rule-based evaluation，不能等同于人工业务评估。
-
-## Score Overview
+## Rule-Based Evaluation Snapshot
 
 ![Model score comparison](assets/model_score_comparison.png)
 
@@ -39,12 +43,13 @@ low-resource customer-service compliance SFT
 | Qwen baseline | 6.275 |
 | Qwen LoRA v4 | 7.865 |
 
-## Quick Links
+Scores are produced by a simple rule-based rubric and are mainly used for relative comparison
+within this repository.
+
+## Main Artifacts
 
 - [Project overview](PROJECT_OVERVIEW.md)
 - [Results summary](results_summary.md)
-- [Interview notes](notes/interview_notes.md)
-- [GitHub submission checklist](GITHUB_SUBMISSION_CHECKLIST.md)
 - [Qwen v4 final summary](experiments/final_qwen_v4_summary.md)
 - [v3 evaluation summary](experiments/final_evaluation_v3_summary.md)
 
@@ -195,9 +200,9 @@ Qwen LoRA v4 在 rule-based evaluation 下进一步提升。
 
 自动评分提升也不等于真实客服质量完全达标。
 
-## v5 Status
+## Future Work: Real-data Extension
 
-v5 计划引入真实中文电商客服语料。
+后续计划探索真实中文电商客服语料，用于增强用户表达多样性和客服回复自然度。
 
 候选数据源包括：
 
@@ -209,10 +214,12 @@ v5 计划引入真实中文电商客服语料。
 
 - 只做了数据源规划和探测。
 - 没有下载真实大数据。
-- 没有训练 v5 模型。
+- 没有基于真实数据继续训练。
 - 没有把真实原始数据提交到 GitHub。
 
-## Repository Safety
+这些数据源目前只是后续扩展方向。
+
+## Repository Hygiene
 
 以下目录不提交到 GitHub：
 
@@ -229,16 +236,15 @@ v5 计划引入真实中文电商客服语料。
 - `*.bin`
 - `*.safetensors`
 
-## How To Read This Project
+## Repository Structure
 
-推荐顺序：
+主要公开文档：
 
-1. 阅读 `PROJECT_OVERVIEW.md`
-2. 阅读 `results_summary.md`
-3. 查看 `assets/model_score_comparison.png`
-4. 阅读 `experiments/final_evaluation_v3_summary.md`
-5. 阅读 `experiments/final_qwen_v4_summary.md`
-6. 阅读 `notes/interview_notes.md`
+1. `PROJECT_OVERVIEW.md`
+2. `results_summary.md`
+3. `assets/model_score_comparison.png`
+4. `experiments/final_evaluation_v3_summary.md`
+5. `experiments/final_qwen_v4_summary.md`
 
 ## Reproducibility Notes
 
@@ -256,7 +262,7 @@ v5 计划引入真实中文电商客服语料。
 
 rule-based evaluation 不能替代人工业务评估。
 
-当前主要是单轮客服回复，不是完整多轮客服系统。
+当前主要是单轮客服回复实验，不包含完整多轮服务流程。
 
 真实数据增强仍在规划阶段。
 

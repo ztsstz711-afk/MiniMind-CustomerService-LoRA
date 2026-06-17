@@ -1,6 +1,6 @@
-# Interview Notes
+# Experiment Notes
 
-## 30 秒项目介绍
+## Experiment Summary
 
 这是一个电商售后合规回复的低资源 LoRA 微调实验。
 
@@ -16,7 +16,7 @@ Qwen LoRA v4 得分 7.865。
 
 但我也明确说明，自动评分不能等同于人工业务评估。
 
-## 2 分钟项目介绍
+## Experiment Details
 
 项目分为五个阶段。
 
@@ -42,7 +42,7 @@ v5 目前只是规划和数据源探测阶段。
 
 它计划引入 JDDC、JDDC 2.1 或 CSDS 这类真实客服数据，但没有下载真实大数据，也没有训练。
 
-## 项目一句话介绍
+## Short Summary
 
 这是一个从 MiniMind 到 Qwen2.5 的电商售后合规回复 LoRA 微调实验。
 
@@ -66,7 +66,7 @@ v5 目前只是规划和数据源探测阶段。
 
 所以这个场景很适合验证 SFT / LoRA 是否真的改善合规回复。
 
-## MiniMind 线怎么讲
+## MiniMind Track
 
 MiniMind 线的价值是低成本跑通完整微调流程。
 
@@ -90,7 +90,7 @@ MiniMind LoRA v2 得分 5.645。
 
 它也暴露了小模型能力边界。
 
-## Qwen 线怎么讲
+## Qwen Track
 
 Qwen 线的价值是验证更强基座模型。
 
@@ -142,9 +142,7 @@ LoRA 后分数提升说明模型在离线评估中更常命中 rubric 要素。
 
 它还需要人工审核和安全兜底。
 
-所以我只把这个项目描述为离线微调实验。
-
-我不会说它已经是线上客服系统。
+所以这个项目只应被描述为离线微调实验。
 
 ## 为什么 rule-based evaluation 有局限
 
@@ -216,7 +214,7 @@ Qwen LoRA v4 虽然分数高，但可能存在固定话术集中。
 
 尝试 Qwen2.5-3B baseline 和 LoRA。
 
-## 面试追问与回答要点
+## Common Questions
 
 ### 1. 这个项目是不是线上客服系统？
 
@@ -366,7 +364,7 @@ Qwen LoRA adapter 约 35.27 MB。
 
 加入 LLM-as-a-judge。
 
-### 17. 如果面试官说数据是合成的怎么办？
+### 17. 如果 project review 质疑数据是合成的怎么办？
 
 我会承认这是限制。
 
@@ -376,7 +374,7 @@ Qwen LoRA adapter 约 35.27 MB。
 
 但真实数据不能替代 hard cases。
 
-### 18. 如果面试官说评分不可靠怎么办？
+### 18. 如果 engineering discussion 质疑评分不可靠怎么办？
 
 我会同意。
 
@@ -410,4 +408,4 @@ LoRA 微调。
 
 结果分析。
 
-GitHub 展示整理。
+项目文档整理。

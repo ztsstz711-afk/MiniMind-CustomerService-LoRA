@@ -101,6 +101,6 @@ v5 真实数据增强仍处于规划阶段。
 ## Recommended Reading
 
 - `results_summary.md`
-- `notes/interview_notes.md`
+- `notes/experiment_notes.md`
 - `experiments/final_evaluation_v3_summary.md`
 - `experiments/final_qwen_v4_summary.md`
