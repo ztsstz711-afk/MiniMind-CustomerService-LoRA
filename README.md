@@ -1,279 +1,138 @@
-# MiniMind-CustomerService-LoRA
+# 客服微调
 
-电商售后合规回复 LoRA 微调实验。
+使用真实中文客服对话对 Qwen3.5-4B 进行 4-bit QLoRA 微调，并在独立测试集上验证模型是否学会了数据中的目标回复。
 
-## TL;DR
+## 最终结果
 
-This repository records a sequence of small-scale LoRA experiments for Chinese e-commerce
-after-sales customer-service responses.
+最终采用 assistant-token 归一化训练得到的 LoRA adapter。测试集包含 120 条未参与训练、并与训练集按源对话隔离的客服回复。
 
-The experiments started with MiniMind to validate the data format, LoRA training loop,
-inference scripts, and evaluation pipeline.
+| 指标 | 原始 Qwen3.5-4B | 微调后 | 变化 |
+| --- | ---: | ---: | ---: |
+| 目标回复 NLL | 3.398 | **1.657** | -51.2% |
+| 目标回复困惑度 PPL | 29.90 | **5.24** | -82.5% |
+| 字符 bigram F1 | 0.058 | **0.169** | +192% |
+| ROUGE-L F1 | 0.117 | **0.266** | +127% |
+| 平均回复长度误差 | 140.4 | **31.3** | -77.7% |
+| 空回复 | 0 | 0 | 无退化 |
+| 严重长度膨胀 | 46 | **0** | -46 |
+| 严重长度缩短 | 0 | 9 | 仍需改进 |
 
-Later runs moved to Qwen2.5-1.5B-Instruct after MiniMind results showed clear capacity
-limits on policy explanation and refusal behavior.
+120 条测试回复的参考 NLL 全部低于原始模型。结果说明 LoRA 明显提高了模型对目标客服回复分布的拟合能力，同时大幅减少了原始模型的冗长扩写。
 
-The project uses synthetic compliance-focused data and a small rule-based evaluation set.
-
-The reported scores are useful for relative comparison inside this repository, but they are
-not a substitute for human business evaluation.
-
-实验主线：
+当前最佳 adapter：
 
 ```text
-low-resource customer-service compliance SFT
--> MiniMind LoRA
--> small-model limitation
--> Qwen2.5-1.5B migration
--> Qwen LoRA improvement
--> rule-based evaluation
+outputs/qwen35_4b_qlora_dch2_token_v10_run2/best_adapter
 ```
 
-> 当前分数来自 rule-based evaluation，不能等同于人工业务评估。
+## 项目内容
+
+- 将本地 DCH-2 客服对话转换为 Qwen messages 格式；
+- 对文本进行脱敏，并按源对话分组切分，避免同一段对话跨训练集和测试集；
+- 使用 Qwen3.5-4B、4-bit NF4 QLoRA 和 assistant-only loss 完成三轮训练；
+- 依据开发集损失选择 checkpoint，不使用测试集挑选模型；
+- 在同一批测试样本、相同解码参数下比较原始模型与 LoRA；
+- 同时检查参考 NLL、文本重合度、空回复、长度异常和重复集中。
+
+## 数据与训练配置
+
+| 项目 | 配置 |
+| --- | --- |
+| 训练数据 | 5,888 条 |
+| 开发数据 | 646 条 |
+| 独立测试数据 | 120 条 |
+| 基座模型 | Qwen3.5-4B |
+| 量化 | 4-bit NF4 double quantization |
+| LoRA | rank 8，alpha 16，dropout 0.05 |
+| 训练轮数 | 3 |
+| 学习率 | `2e-4` |
+| 最大长度 | 512 tokens |
+| 随机种子 | 42 |
+| 最佳 checkpoint | epoch 2 |
+
+数据仅用于本地非商业研究和学习。原始对话、处理后的私有数据、模型权重和生成结果均不提交到公开仓库。
+
+## 运行方法
+
+### 1. 环境
+
+先根据本机 CUDA 驱动安装匹配的 PyTorch，再安装其余依赖：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu128
+.\.venv\Scripts\python.exe -m pip install -r requirements-qwen-qlora.txt
+```
+
+### 2. 准备数据
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_qwen35_dch2_protocol_v8.py --help
+```
+
+该脚本生成按源对话隔离的 `train.jsonl`、`dev.jsonl` 和冻结测试集。DCH-2 原始文件需要由使用者根据其数据协议自行准备。
+
+### 3. 训练最佳配置
+
+```powershell
+.\.venv\Scripts\python.exe scripts\train_qwen35_qlora_v8.py `
+  --model_name_or_path models\qwen3_5_4b `
+  --train_file outputs\qwen35_dch2_protocol_v8\train.jsonl `
+  --dev_file outputs\qwen35_dch2_protocol_v8\dev.jsonl `
+  --output_dir outputs\qwen35_customer_service_run `
+  --num_train_epochs 3 `
+  --per_device_train_batch_size 1 `
+  --per_device_eval_batch_size 1 `
+  --gradient_accumulation_steps 8 `
+  --learning_rate 0.0002 `
+  --max_seq_length 512 `
+  --seed 42 `
+  --loss_normalization assistant_token
+```
+
+### 4. 单条推理
+
+```powershell
+.\.venv\Scripts\python.exe scripts\infer_qwen35_lora.py `
+  --prompt "我的退款还没有到账，请问怎么查询？"
+```
+
+脚本默认加载本项目验证效果最好的 adapter，关闭 thinking，并使用确定性解码。
+
+### 5. 评估
+
+```powershell
+# 目标回复 NLL / PPL
+.\.venv\Scripts\python.exe scripts\evaluate_qwen35_reference_nll_v8.py --help
+
+# 固定样本生成
+.\.venv\Scripts\python.exe scripts\build_qwen_frozen_eval_v7.py --help
+
+# 参考重合度与长度、重复退化检查
+.\.venv\Scripts\python.exe scripts\analyze_qwen35_reference_alignment_v8.py --help
+```
+
+评估脚本默认拒绝覆盖已有输出目录，避免无意中改写实验结果。
+
+## 核心文件
+
+```text
+requirements-qwen-qlora.txt
+scripts/
+  build_qwen35_dch2_protocol_v8.py
+  train_qwen35_qlora_v8.py
+  infer_qwen35_lora.py
+  build_qwen_frozen_eval_v7.py
+  evaluate_qwen35_reference_nll_v8.py
+  analyze_qwen35_reference_alignment_v8.py
+```
 
-## Rule-Based Evaluation Snapshot
+开发过程中还比较了不同的损失归一化和短回复权重方案，最终保留综合指标最好的 assistant-token 归一化配置。实验过程不是项目首页的重点。
 
-![Model score comparison](assets/model_score_comparison.png)
+## 局限性
 
-| Model | Overall Score |
-| --- | ---: |
-| MiniMind baseline | 5.025 |
-| MiniMind LoRA v1 | 5.375 |
-| MiniMind LoRA v2 | 5.645 |
-| Qwen baseline | 6.275 |
-| Qwen LoRA v4 | 7.865 |
-
-Scores are produced by a simple rule-based rubric and are mainly used for relative comparison
-within this repository.
-
-## Main Artifacts
-
-- [Project overview](PROJECT_OVERVIEW.md)
-- [Results summary](results_summary.md)
-- [Qwen v4 final summary](experiments/final_qwen_v4_summary.md)
-- [v3 evaluation summary](experiments/final_evaluation_v3_summary.md)
-
-## Project Motivation
-
-电商售后回复是一个适合做低资源微调实验的场景。
-
-它有明确业务规则。
-
-它要求模型不仅会回答，还要礼貌安抚、解释规则、询问必要信息、给出下一步操作。
-
-它还要求模型不能乱承诺，不能绕过平台规则，不能泄露隐私。
-
-因此这个场景非常适合观察 SFT / LoRA 是否能改善回复风格和合规边界。
-
-## Scope
-
-本项目覆盖以下售后场景：
-
-- 物流查询
-- 退款进度
-- 退换货申请
-- 发票开具
-- 优惠券使用
-- 商品咨询
-- 订单取消
-- 投诉安抚
-- 拒绝不合理请求
-- 地址修改
-
-## Data
-
-v1 数据：
-
-- 原始数据：`data/customer_service_sft.jsonl`
-- 总量：300
-- train：240
-- eval：60
-- 字段：`instruction`、`input`、`output`、`category`
-
-v2 数据：
-
-- 原始数据：`data/customer_service_sft_v2.jsonl`
-- 总量：1000
-- train：800
-- eval：200
-- 新增字段：`difficulty`、`tags`
-- 重点增强 hard cases 和拒答边界
-
-v3 评估集：
-
-- 文件：`data/eval_prompts_v3.jsonl`
-- 数量：100
-- 每类 10 条
-- 用于 MiniMind 和 Qwen 的统一自动评分
-
-v4 Qwen 数据：
-
-- `data/qwen_train_v4.jsonl`
-- `data/qwen_eval_v4.jsonl`
-- 格式为 Qwen messages SFT 格式
-
-## Model Tracks
-
-### MiniMind Track
-
-MiniMind 线用于低成本跑通完整 LoRA 微调流程。
-
-它包括：
-
-- MiniMind baseline 推理
-- MiniMind LoRA v1 训练
-- MiniMind LoRA v2 训练
-- baseline / LoRA v1 / LoRA v2 对比
-
-主要结论：
-
-- MiniMind LoRA 有提升。
-- MiniMind LoRA v2 从 5.025 提升到 5.645。
-- 但小模型能力限制明显。
-- 复杂规则、拒答边界和自然表达仍不稳定。
-
-### Qwen Track
-
-Qwen 线用于验证更强基座模型的价值。
-
-它包括：
-
-- Qwen2.5-1.5B-Instruct baseline
-- Qwen LoRA smoke training
-- Qwen LoRA v4 full training
-- Qwen baseline vs Qwen LoRA v4 对比
-
-主要结论：
-
-- Qwen baseline overall score 为 6.275。
-- Qwen baseline 已超过 MiniMind LoRA v2。
-- Qwen LoRA v4 overall score 为 7.865。
-- Qwen LoRA v4 拒绝不合理请求类平均分为 8.500。
-- Qwen LoRA v4 unsafe flags 为 0。
-
-## Evaluation
-
-本项目使用 rule-based rubric 做自动评估。
-
-评分维度包括：
-
-- 礼貌安抚
-- 必要信息询问
-- 规则说明
-- 下一步操作
-- 拒答表达
-- 不安全承诺惩罚
-- 重复惩罚
-- 长度惩罚
-
-这个评估方式可复现、成本低，适合横向比较。
-
-但它不能替代人工业务评估。
-
-关键词命中不等于真正理解业务规则。
-
-固定客服话术也可能获得较高分。
-
-因此所有分数都应理解为离线粗评结果。
-
-## Key Results
-
-| Version | Base Model | Method | Eval Size | Result |
-| --- | --- | --- | ---: | --- |
-| MiniMind baseline | MiniMind full_sft_768 | Baseline | 100 | 5.025 |
-| MiniMind LoRA v1 | MiniMind full_sft_768 | LoRA | 100 | 5.375 |
-| MiniMind LoRA v2 | MiniMind full_sft_768 | LoRA | 100 | 5.645 |
-| Qwen baseline | Qwen2.5-1.5B-Instruct | Baseline | 100 | 6.275 |
-| Qwen LoRA v4 | Qwen2.5-1.5B-Instruct | PEFT LoRA | 100 | 7.865 |
-
-## Important Findings
-
-MiniMind LoRA 证明了低资源 LoRA 流程可行。
-
-MiniMind LoRA v2 有提升，但提升幅度有限。
-
-Qwen baseline 已经强于 MiniMind LoRA v2。
-
-Qwen LoRA v4 在 rule-based evaluation 下进一步提升。
-
-训练 loss 下降不等于线上可用。
-
-自动评分提升也不等于真实客服质量完全达标。
-
-## Future Work: Real-data Extension
-
-后续计划探索真实中文电商客服语料，用于增强用户表达多样性和客服回复自然度。
-
-候选数据源包括：
-
-- JDDC
-- JDDC 2.1
-- CSDS
-
-当前状态：
-
-- 只做了数据源规划和探测。
-- 没有下载真实大数据。
-- 没有基于真实数据继续训练。
-- 没有把真实原始数据提交到 GitHub。
-
-这些数据源目前只是后续扩展方向。
-
-## Repository Hygiene
-
-以下目录不提交到 GitHub：
-
-- `outputs/`
-- `models/`
-- `minimind/`
-- `data/raw_real_v5/`
-- `checkpoints/`
-
-以下文件类型不提交：
-
-- `*.pt`
-- `*.pth`
-- `*.bin`
-- `*.safetensors`
-
-## Repository Structure
-
-主要公开文档：
-
-1. `PROJECT_OVERVIEW.md`
-2. `results_summary.md`
-3. `assets/model_score_comparison.png`
-4. `experiments/final_evaluation_v3_summary.md`
-5. `experiments/final_qwen_v4_summary.md`
-
-## Reproducibility Notes
-
-本仓库保留数据构造脚本、格式转换脚本、训练 wrapper、推理脚本和评估脚本。
-
-但是模型权重、本地输出和上游 MiniMind 仓库不提交。
-
-如果要复现实验，需要自行准备对应 checkpoint 和本地模型。
-
-## Limitations
-
-数据主要是合成数据。
-
-评估集只有 100 条。
-
-rule-based evaluation 不能替代人工业务评估。
-
-当前主要是单轮客服回复实验，不包含完整多轮服务流程。
-
-真实数据增强仍在规划阶段。
-
-## Suggested Next Steps
-
-引入真实客服文本数据。
-
-保留合成 hard cases。
-
-加入人工评分或 LLM-as-a-judge。
-
-扩展 evaluation prompts。
-
-尝试 Qwen2.5-3B baseline 和 LoRA。
+- 当前结果证明模型更接近给定客服回复，不代表生产环境中的客服质量；
+- 模型未连接订单或物流系统，不能把生成内容当作真实订单状态，生产使用前需要接入检索与事实校验；
+- 字符重合指标不能完全表示语义等价；
+- 最佳模型仍有 9 条严重缩短回复，长流程回答覆盖需要继续改进；
+- 没有用这 120 条测试数据反复选择训练规则或修改超参数。

@@ -1,11 +1,21 @@
 __pycache__/
 *.pyc
+*.log
 .venv/
 .env
 outputs/
 checkpoints/
 models/
 data/raw_real_v5/
+data/raw_real_v6/
+data/qwen_*_real_clarification_v5.jsonl
+data/qwen_train_real_equalcount_v6.jsonl
+data/qwen_train_real_plus_hard_v6.jsonl
+data/qwen_*_dch2_v7_local.jsonl
+data/qwen_*_synthetic_v5.jsonl
+data/train*.jsonl
+experiments/
+notes/
 minimind/
 minimind/out/
 minimind/**/*.pth
@@ -18,3 +28,4 @@ minimind/**/*.safetensors
 *.safetensors
 .DS_Store
 .vscode/
+work/
